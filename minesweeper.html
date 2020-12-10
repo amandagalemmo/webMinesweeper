@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Minesweeper board generator</title>
+    <style>
+      /* General styles */
+      html {
+        background-color: white;
+        height: 100%;
+        font-family: serif;
+      }
+
+      body {
+        height: inherit;
+        background-color: gray;
+        margin: 0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      canvas {
+        background: #eee;
+        margin: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <p>X [max = 30]</p><input type="number" id="x" name="x" max="30">
+      <p>Y [max = 16]</p><input type="number" id="y" name="y" max="16">
+      <p>Mines [max = 99]</p><input type="number" id="mines" name="mines" max="99">
+      <button id="submit">Submit</button>
+    </div>
+    <canvas id="gameBoard" width="360" height="360">
+    </canvas>
+
+    <script src="minesweeperscript.js"></script>
+  </body>
+</html>
