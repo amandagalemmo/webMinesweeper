@@ -6,30 +6,33 @@ var tilePadding = 1;
 var x = canvas.width/2;
 var y = canvas.height/2;
 
-var boardRowCount = 9;
-var boardColCount = 9;
+var boardRowCount = 16;
+var boardColCount = 30;
 
 
-var numMines = 10;
+var numMines = 99;
 var numTiles = boardRowCount * boardColCount;
-var middle = Math.floor(numTiles/2);
-console.log(middle);
+var startTile = getRandomInt(numTiles);
+console.log(startTile);
 
 var mineLocations = populateBoard();
 
 var tiles = [];
+let tileNum = 0;
 for (var r = 0; r < boardRowCount; r++) {
   tiles[r] = [];
   for (var c = 0; c < boardColCount; c++) {
     tiles[r][c] = {
       x : 0,
       y: 0,
+      num: tileNum,
       visited: false,
       mine: mineLocations[boardRowCount * r + c]
     };
-    if (r === 4 && c === 4) {
+    if (tileNum === startTile) {
       tiles[r][c].visited = true;
     }
+    tileNum++;
   }
 }
 
@@ -37,6 +40,7 @@ function getRandomInt(numTiles) {
   return Math.floor(Math.random() * numTiles);
 }
 
+// @TODO: still prints over start tile for some reason
 function populateBoard() {
   board = new Array(numTiles).fill(false);
   let m = 0;
@@ -44,13 +48,12 @@ function populateBoard() {
     let i = getRandomInt(numTiles);
     // @TODO: refactor this
     while (true) {
-      if (i === middle || board[i]) {
-        console.log('line 48; i = ' + i);
+      if (i === startTile || board[i]) {
+        console.log('line 51, i = ' + i);
         i = getRandomInt(numTiles);
-        console.log(`new i: ${i}`);
+        console.log('new i = ' + i);
       } else {break;}
     }
-    console.log(`${i} : ${board[i]}`);
     board[i] = true;
     m++;
   }
@@ -96,11 +99,9 @@ function drawBoard() {
 function drawHints() {
   ctx.font = '20px Arial';
   ctx.fillStyle = 'white';
-  let tileNum = 0;
   for (var r = 0; r < boardRowCount; r++) {
     for (var c = 0; c < boardColCount; c++) {
-      ctx.fillText(`${tileNum}`, tiles[r][c].x + tileDim/4, tiles[r][c].y + tileDim - 15, 40);
-      tileNum++;
+      ctx.fillText(`${tiles[r][c].num}`, tiles[r][c].x, tiles[r][c].y + tileDim - 15, 40);
     }
   }
 }
