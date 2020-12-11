@@ -3,21 +3,33 @@ var canvas = document.getElementById('gameBoard');
 var ctx = canvas.getContext('2d');
 
 const TILEDIM = 24;
-const ROWS = 16;
-const COLS = 30;
-const numMines = 99;
+const ROWS = 9;
+const COLS = 9;
+const numMines = 10;
 const numTiles = ROWS * COLS;
-var playerPos = getRandomInt(numTiles);
+var playerInit = getRandomInt(numTiles);
+var playerR = Math.floor(playerInit / ROWS);
+var playerC = playerInit - playerR * ROWS;
 
 var bLeft = new Array();
 var bRight = new Array();
-for (let i = 0; i < numTiles; i+=COLS) {bLeft.push(i);}
+for (let i = 0; i < numTiles; i+=COLS) {bLeft.push(i);} // ew ish hacky fix
 for (let i = COLS-1; i < numTiles; i+=COLS) {bRight.push(i);}
 
 var boardInit = initializeBoard();
 
 var mineLocations = boardInit.mineLoc,
     hints = boardInit.hints;
+
+// Palette
+var colors = {
+  hidden: '#355070',
+  borderDistant: '#6d597a',
+  seenDistant: '#b56578',
+  borderNear: '#e56b6f',
+  seenNear: '#eaac8b',
+  player: '#a3d6c8' //403130?
+}
 
 var tiles = [];
 var tileNum = 0;
@@ -30,67 +42,36 @@ for (var r = 0; r < ROWS; r++) {
       num: tileNum,
       visited: false,
       mine: mineLocations[tileNum],
-      hint: hints[tileNum]
+      hint: hints[tileNum],
+      color = colors.hidden
     };
-    if (tileNum === playerPos) {
-      tiles[r][c].visited = true;
+    if (tileNum === playerInit) {
+      tiles[r][c].visited = true;  // change to viewable?
     }
     tileNum++;
   }
 }
 
-// Palette______________________________________________________________________
-var colors = {
-  hidden: '#355070',
-  borderDistant: '#6d597a',
-  seenDistant: '#b56578',
-  borderNear: '#e56b6f',
-  seenNear: '#eaac8b',
-  player: '#a3d6c8' //403130?
-}
-
 // UI___________________________________________________________________________
-var rightPressed = false;
-var leftPressed = false;
-var upPressed = false;
-var downPressed = false;
-var escapePressed = false;
-var spacePressed = false;
 
-document.addEventListener('keydown', keyDownHandler, false);
-document.addEventListener('keyup', keyUpHandler, false);
+document.addEventListener('keydown', keyDownHandler, {once: true});
 
 function keyDownHandler(e) {
   console.log('keydown');
   if (e.key === "Right" || e.key === "ArrowRight" || e.key === 'A') {
-    rightPressed = true;
+    if (playerC < COLS - 1) playerC++;
   } else if (e.key === "Left" || e.key === "ArrowLeft" || e.key === 'D') {
-    leftPressed = true;
+    if (playerC > 0) playerC--;
   } else if (e.key === "Down" || e.key === "ArrowDown" || e.key === 'S') {
-    downPressed = true;
+    if (playerR < ROWS  - 1) playerR++;
   } else if (e.key === "Up" || e.key === "ArrowUp" || e.key === 'W') {
-    upPressed = true;
-  } else if (e.key === "Esc" || e.key === "Escape") {
-    escapePressed = true;
-  } else if (e.key === "Spacebar" || e.key === " ") {
-    spacePressed = true;
-  }
-}
+    if (playerR > 0) playerR--;
+  } //else if (e.key === "Esc" || e.key === "Escape") {
+  // } else if (e.key === "Spacebar" || e.key === " ") {
+  // }
 
-function keyUpHandler(e) {
-  if (e.key === "Right" || e.key === "ArrowRight" || e.key === 'A') {
-    rightPressed = false;
-  } else if (e.key === "Left" || e.key === "ArrowLeft" || e.key === 'D') {
-    leftPressed = false;
-  } else if (e.key === "Down" || e.key === "ArrowDown" || e.key === 'S') {
-    downPressed = false;
-  } else if (e.key === "Up" || e.key === "ArrowUp" || e.key === 'W') {
-    upPressed = false;
-  } else if (e.key === "Esc" || e.key === "Escape") {
-    escapePressed = false;
-  } else if (e.key === "Spacebar" || e.key === " ") {
-    spacePressed = false;
-  }
+  setTimeout(function() {document.addEventListener('keydown', 
+                                    keyDownHandler, {once: true})}, 250);
 }
 
 // Helper functions_____________________________________________________________
@@ -107,7 +88,7 @@ function initializeBoard() {
     let i = getRandomInt(numTiles);
     // @TODO: do not like that it's a while loop
     while (true) {
-      if (i === playerPos || mineLoc[i]) {
+      if (i === playerInit || mineLoc[i]) {
         i = getRandomInt(numTiles);
       } else {break;}
     }
@@ -149,13 +130,13 @@ function drawBoard() {
         color = colors['seenNear'];
       } else if (!tiles[r][c].visited) {
         color = colors['hidden'];
-      } else {color = colors['player'];}
-      var tileX = (c * (TILEDIM));
-      var tileY = (r * (TILEDIM));
-      tiles[r][c].x = tileX;
-      tiles[r][c].y = tileY;
+      }
+      
+      tiles[r][c].x = (c * (TILEDIM));
+      tiles[r][c].y = (r * (TILEDIM));
+      
       ctx.beginPath();
-      ctx.rect(tileX, tileY, TILEDIM, TILEDIM);
+      ctx.rect(tiles[r][c].x, tiles[r][c].y, TILEDIM, TILEDIM);
       ctx.fillStyle = color;
       ctx.fill();
       ctx.closePath();
@@ -163,20 +144,42 @@ function drawBoard() {
   }
 }
 
+function drawPlayer() {
+  ctx.beginPath();
+  ctx.rect(tiles[playerR][playerC].x, tiles[playerR][playerC].y, 
+           TILEDIM, TILEDIM);
+  ctx.fillStyle = colors['player'];
+  ctx.fill();
+  ctx.closePath();
+}
+
 function drawHints() {
   ctx.font = '12px Arial';
   ctx.fillStyle = 'white';
   for (var r = 0; r < ROWS; r++) {
     for (var c = 0; c < COLS; c++) {
-      ctx.fillText(`${tiles[r][c].hint}`, tiles[r][c].x + 8, tiles[r][c].y + 16, TILEDIM);
+      ctx.fillText(`${tiles[r][c].hint}`, 
+                    tiles[r][c].x + 8, tiles[r][c].y + 16, TILEDIM);
+      /*ctx.fillText(`${tiles[r][c].num}`, 
+      tiles[r][c].x + 8, tiles[r][c].y + 16, TILEDIM);*/
     }
   }
 }
 
+// Running this thing__________________________________________________________
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBoard();
+  
   drawHints();
+  drawPlayer();
+
+  // once event is triggered, run draw and delay event listener .5sec, 
+  // but continue to draw. maybe idle enemy animations. dont have to worry 
+  // at the minute though.
+  
+  //setTimeout(function() {requestAnimationFrame(draw)}, 500);
+  requestAnimationFrame(draw);
 }
 //trigger draw on successful keydown
 draw();
