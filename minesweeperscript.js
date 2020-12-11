@@ -1,31 +1,36 @@
+// Initializations______________________________________________________________
 var canvas = document.getElementById('gameBoard');
 var ctx = canvas.getContext('2d');
 
-var tileDim = 24;
-
-var boardRowCount = 9;
-var boardColCount = 9;
-
-
-var numMines = 15;
-var numTiles = boardRowCount * boardColCount;
+const TILEDIM = 24;
+const ROWS = 16;
+const COLS = 30;
+const numMines = 99;
+const numTiles = ROWS * COLS;
 var playerPos = getRandomInt(numTiles);
-console.log(playerPos);
 
-var mineLocations = populateBoard();
+var bLeft = new Array();
+var bRight = new Array();
+for (let i = 0; i < numTiles; i+=COLS) {bLeft.push(i);}
+for (let i = COLS-1; i < numTiles; i+=COLS) {bRight.push(i);}
+
+var boardInit = initializeBoard();
+
+var mineLocations = boardInit.mineLoc,
+    hints = boardInit.hints;
 
 var tiles = [];
 var tileNum = 0;
-for (var r = 0; r < boardRowCount; r++) {
+for (var r = 0; r < ROWS; r++) {
   tiles[r] = [];
-  for (var c = 0; c < boardColCount; c++) {
+  for (var c = 0; c < COLS; c++) {
     tiles[r][c] = {
       x : 0,
       y: 0,
       num: tileNum,
       visited: false,
-      mine: mineLocations[boardRowCount * r + c],
-      hint: 0
+      mine: mineLocations[tileNum],
+      hint: hints[tileNum]
     };
     if (tileNum === playerPos) {
       tiles[r][c].visited = true;
@@ -34,7 +39,7 @@ for (var r = 0; r < boardRowCount; r++) {
   }
 }
 
-// Palette
+// Palette______________________________________________________________________
 var colors = {
   hidden: '#355070',
   borderDistant: '#6d597a',
@@ -44,7 +49,7 @@ var colors = {
   player: '#a3d6c8' //403130?
 }
 
-// UI
+// UI___________________________________________________________________________
 var rightPressed = false;
 var leftPressed = false;
 var upPressed = false;
@@ -56,6 +61,7 @@ document.addEventListener('keydown', keyDownHandler, false);
 document.addEventListener('keyup', keyUpHandler, false);
 
 function keyDownHandler(e) {
+  console.log('keydown');
   if (e.key === "Right" || e.key === "ArrowRight" || e.key === 'A') {
     rightPressed = true;
   } else if (e.key === "Left" || e.key === "ArrowLeft" || e.key === 'D') {
@@ -87,75 +93,49 @@ function keyUpHandler(e) {
   }
 }
 
+// Helper functions_____________________________________________________________
 function getRandomInt(numTiles) {
   return Math.floor(Math.random() * numTiles);
 }
 
-// @TODO: still prints over start tile for some reason
-//          seems to do ok on smaller boards? 
-function populateBoard() {
-  board = new Array(numTiles).fill(false);
+function initializeBoard() {
+  let mineLoc = new Array(numTiles).fill(false);
+  let hints = new Array(numTiles).fill(0);
   let m = 0;
+
   while (m < numMines) {
     let i = getRandomInt(numTiles);
-    //console.log(`start tile: ${playerPos}`);
-    // @TODO: refactor this
+    // @TODO: do not like that it's a while loop
     while (true) {
-      if (i === playerPos || board[i]) {
-        console.log('line 51, i = ' + i);
+      if (i === playerPos || mineLoc[i]) {
         i = getRandomInt(numTiles);
-        console.log('new i = ' + i);
       } else {break;}
     }
-    board[i] = true;
-    m++;
-  }
-  return board;
-}
-
-// generate hints. heat map
-function analyzeBoard(board) {
-  let curTile = 0;
-  for (var r = 0; r < boardRowCount; r++) {
-    for (var c = 0; c < boardColCount; c++) {
-
-      if (mineLocations[curTile]) {
-        tiles[r][c].hint = '*';
-        curTile++;
-      } 
-      else if (tiles[r][c].tileNum === playerPos) {
-        tiles[r][c].hint = 'x';
-        curTile++;
-      } 
-      else {
-        let neighbors = 0;
-        if ((r > 0 && c > 0) && (r < boardRowCount-1 && c < boardColCount-1) ) {
-          for (let _r = r - 1; _r <= r + 1; r++) {
-            for (let _c = c - 1; _c <= c + 1; c++) {
-              if (tiles[r][c].mine) {
-                neighbors++;
-              }
-            }
-          }
-          tiles[r][c].hint = neighbors;
-        } 
-        else {
-          if (r === 0) {
-            
-          }
+    mineLoc[i] = true;
+    for (let y = -COLS; y <= COLS; y += COLS) {
+      if (i + y < 0 || i + y >= numTiles) {continue;}
+      for (let x = -1; x < 2; x++) {
+        if (i + x < 0 || i + x >= numTiles) {continue;}
+        else if (bLeft.includes(i) && x === -1) {continue;}
+        else if (bRight.includes(i) && x === 1) {continue;}
+        j = i + x + y;
+        if (mineLoc[j]) {
+          hints[j] = '*';
+        } else {
+          hints[j]++;
         }
       }
+    }
+    m++;
+  }
+  return {mineLoc, hints};
 }
 
-function prettyPrint(board) {
+function prettyPrint() {
   str = [];
-  for (var r = 0; r < boardRowCount; r++) {
-    for (var c = 0; c < boardColCount; c++) {
-      if (board[r][c].mine) {
-        str.push('*');
-      } else {
-        str.push('0');
-      }
+  for (var r = 0; r < ROWS; r++) {
+    for (var c = 0; c < COLS; c++) {
+      str.push(tiles[r][c].hint);
     }
     str.push('\n')
   }
@@ -163,19 +143,19 @@ function prettyPrint(board) {
 }
 
 function drawBoard() {
-  for (var r = 0; r < boardRowCount; r++) {
-    for (var c = 0; c < boardColCount; c++) {
+  for (var r = 0; r < ROWS; r++) {
+    for (var c = 0; c < COLS; c++) {
       if (tiles[r][c].mine) {
         color = colors['seenNear'];
       } else if (!tiles[r][c].visited) {
         color = colors['hidden'];
       } else {color = colors['player'];}
-      var tileX = (c * (tileDim));
-      var tileY = (r * (tileDim));
+      var tileX = (c * (TILEDIM));
+      var tileY = (r * (TILEDIM));
       tiles[r][c].x = tileX;
       tiles[r][c].y = tileY;
       ctx.beginPath();
-      ctx.rect(tileX, tileY, tileDim, tileDim);
+      ctx.rect(tileX, tileY, TILEDIM, TILEDIM);
       ctx.fillStyle = color;
       ctx.fill();
       ctx.closePath();
@@ -186,9 +166,9 @@ function drawBoard() {
 function drawHints() {
   ctx.font = '12px Arial';
   ctx.fillStyle = 'white';
-  for (var r = 0; r < boardRowCount; r++) {
-    for (var c = 0; c < boardColCount; c++) {
-      ctx.fillText(`${tiles[r][c].num}`, tiles[r][c].x, tiles[r][c].y + tileDim, 40);
+  for (var r = 0; r < ROWS; r++) {
+    for (var c = 0; c < COLS; c++) {
+      ctx.fillText(`${tiles[r][c].hint}`, tiles[r][c].x + 8, tiles[r][c].y + 16, TILEDIM);
     }
   }
 }
@@ -197,12 +177,6 @@ function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBoard();
   drawHints();
-
-  if (rightPressed) {
-
-  }
 }
-
-console.log(prettyPrint(tiles));
-drawBoard();
-drawHints();
+//trigger draw on successful keydown
+draw();

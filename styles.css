@@ -1,0 +1,26 @@
+/* General styles */
+html {
+  background-color: gray;
+  height: 100%;
+  font-family: serif;
+}
+
+body {
+  height: inherit;
+  margin: 10;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+canvas {
+  background: gray;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+div {
+  margin: auto;
+  width: 80%;
+}
