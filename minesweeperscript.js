@@ -1,6 +1,8 @@
 /*@TODO:
-    - create a newGame method 
-    - allow map to resize with window? this is a stretch goal*/
+    - create a newGame method
+    - allow map to resize with window? this is a stretch goal
+    - add flagging
+    - endgame. expose all bricks/hints*/
 
 // Initializations______________________________________________________________
 var canvas = document.getElementById('gameBoard');
@@ -8,12 +10,17 @@ var ctx = canvas.getContext('2d');
 ctx.canvas.width = window.innerWidth;
 ctx.canvas.height = window.innerHeight;
 
-const TILEDIM = 24;                                   // Dimensions of each tile
-//const ROWS = Math.floor(ctx.canvas.height / TILEDIM); // might not always be a constant
-//const COLS = Math.floor(ctx.canvas.width / TILEDIM); // might not always be a constant
 
-const ROWS = 5;
-const COLS = 5;
+
+const TILEDIM = 24;                                   // Dimensions of each tile
+const ROWS = Math.floor(ctx.canvas.height / TILEDIM); // might not always be a constant
+const COLS = Math.floor(ctx.canvas.width / TILEDIM); // might not always be a constant
+
+const sprite = new Image();
+sprite.src = 'guy.png';
+
+// const ROWS = 9;
+// const COLS = 9;
 
 const numTiles = ROWS * COLS;
 const numMines = Math.ceil(numTiles * .125);
@@ -36,7 +43,7 @@ var colors = {
   seenDistant: '#b56578',
   borderNear: '#e56b6f',
   seenNear: '#eaac8b',
-  player: '#a3d6c8'
+  player: '#a3d6c8'    //rgba(163, 214, 200, 0.5)
 }
 
 var tiles = [];
@@ -59,8 +66,8 @@ window.addEventListener('resize', reportWindowSize);
 document.addEventListener('keydown', keyDownHandler, {once: true});
 
 function reportWindowSize() {
-    ctx.canvas.width = window.innerWidth;
-    ctx.canvas.height = window.innerHeight;
+    ctx.canvas.width = window.innerWidth - TILEDIM;
+    ctx.canvas.height = window.innerHeight - TILEDIM;
     leftPadding = Math.ceil((ctx.canvas.width - (COLS * TILEDIM)) / 2);
     topPadding = Math.ceil((ctx.canvas.height - (ROWS * TILEDIM)) / 2);
     draw();
@@ -137,17 +144,18 @@ function prettyPrint() {
 
 function drawBoard() {
   for (var r = 0; r < ROWS; r++) {
-    for (var c = 0; c < COLS; c++) {     
+    for (var c = 0; c < COLS; c++) {
       drawTile(r,c);
-      drawHint(r,c);
-      //if (tiles[r][c].visited) {drawHint(r,c)};
+      //drawHint(r,c);
+      drawPlayer();
+      if (tiles[r][c].visited) {drawHint(r,c)};
     }
   }
 }
 
 function drawTile(r, c) {
   ctx.beginPath();
-  ctx.rect(tiles[r][c].cX + leftPadding, tiles[r][c].cY + topPadding, 
+  ctx.rect(tiles[r][c].cX + leftPadding, tiles[r][c].cY + topPadding,
     TILEDIM, TILEDIM);
   ctx.fillStyle = tiles[r][c].color;
   ctx.fill();
@@ -156,9 +164,12 @@ function drawTile(r, c) {
 
 function drawPlayer() {
   ctx.beginPath();
-  ctx.rect(tiles[playerR][playerC].cX + leftPadding, tiles[playerR][playerC].cY + topPadding, 
-           TILEDIM, TILEDIM);
-  ctx.fillStyle = colors['player'];
+  ctx.drawImage(sprite, tiles[playerR][playerC].cX + leftPadding, tiles[playerR][playerC].cY + topPadding);
+  //ctx.rect(tiles[playerR][playerC].cX + leftPadding, tiles[playerR][playerC].cY + topPadding,
+  //         TILEDIM, TILEDIM);
+  //ctx.fillStyle = 'rgba(163, 214, 200, 0.5)';
+  // ctx.lineWidth = '3';
+  // ctx.strokeStyle = colors['player'];
   ctx.fill();
   ctx.closePath();
 }
@@ -166,31 +177,32 @@ function drawPlayer() {
 function drawHint(r, c) {
   ctx.font = '12px Arial';
   ctx.fillStyle = 'white';
-  ctx.fillText(tiles[r][c].neighbors>0 ? `${tiles[r][c].neighbors}` : ' ', 
+  ctx.fillText(tiles[r][c].neighbors>0 ? `${tiles[r][c].neighbors}` : ' ',
     tiles[r][c].cX + 8 + leftPadding, tiles[r][c].cY + 16+ topPadding, TILEDIM);
-  /*ctx.fillText(`${tiles[r][c].num}`, 
+  /*ctx.fillText(`${tiles[r][c].num}`,
       tiles[r][c].cX + 8, tiles[r][c].cY + 16, TILEDIM);*/
 }
 
 function move() {
   if (tiles[playerR][playerC].neighbors === 9) {    // if tile is mine
     gameOver();
-  } 
+  }
   // if the tile we just moved to hasn't been visited...
   if (!tiles[playerR][playerC].visited) {
     tiles[playerR][playerC].visited = true;
     //console.log(`[[${playerR},${playerC}]]`);
-    
+
     let exposeQ = [];
     let currQueue = new Set();
     exposeQ.push(tiles[playerR][playerC]);
     while (exposeQ.length > 0 && exposeQ[0] !== null) {
       console.log('exposeQ ' + exposeQ + ' len: ' + exposeQ.length);
       let currNode = exposeQ.shift();
+      currQueue.delete(currNode);
       console.log('currNode: ' + currNode.cY + ' ' + currNode.cX);
       //handles current tile, returns list of exposure-ready neighbors
       let result = handleTile(currNode.cY / TILEDIM, currNode.cX / TILEDIM);
-      if (result !== null) {
+      if (result !== null && result.length > 0) {
         console.log('result: ' + result + ' result length: ' + result.length);
         console.log(result[0] === result[1]);
         for (let r of result) {
@@ -205,6 +217,8 @@ function move() {
 }
 
 function handleTile(r, c) {
+  tiles[r][c].visited = true;
+  let toQueue = null;
   try {
     assignColor(tiles[r][c]);
   } catch (error) {
@@ -212,43 +226,32 @@ function handleTile(r, c) {
     console.log(r + ' ' + c);
     return;
   }
-  let blocked = 0;
-  let toQueue = [];
-  let zero = false;
-  tiles[r][c].visited = true;
-  for (i = -1; i <= 1; i += 2) {
-    console.log(i);
-    if (r + i > 0 && r + i < ROWS-1) {
-      console.log(`\t[${r + i}][${c}]`);
-      if (!tiles[r + i][c].visited) {
-        if (tiles[r + i][c].neighbors > 0) {
-          blocked++;
-          if (tiles[r + i][c].neighbors < 9) {
-            toQueue.push(tiles[r + i][c]);
-          }
-        } else {
-          zero = true;
-          toQueue.push(tiles[r + i][c]);
-        }
+  if (tiles[r][c].neighbors === 0) {
+    toQueue = new Array();
+    for (i = -1; i <= 1; i += 2) {
+      if ((r + i > -1 && r + i < ROWS) && !tiles[r + i][c].visited) {
+        toQueue.push(tiles[r + i][c]);
       }
-    } 
-    if (c + i > 0 && c + i < COLS-1) {
-      if (!tiles[r][c + i].visited) {
-        if (tiles[r][c + i].neighbors > 0) {
-          blocked++;
-          if (tiles[r][c + i].neighbors < 9) {
-            toQueue.push(tiles[r][c + i]);
-          }
-        } else {
-          zero = true;
-          toQueue.push(tiles[r][c + i])
-        }
+      if ((c + i > -1 && c + i < COLS) && !tiles[r][c + i].visited) {
+        toQueue.push(tiles[r][c + i]);
+      }
+      if ((r + i > -1 && r + i < ROWS) && (c + i > -1 && c + i < COLS) &&
+           !tiles[r + i][c + i].visited) {
+        toQueue.push(tiles[r + i][c + i]);
       }
     }
-  }
-  if (blocked === 4 || !zero) {
-    console.log('blocked');
-    return null;
+  } else {
+    toQueue = new Array();
+    for (i = -1; i <= 1; i += 2) {
+      if ((r + i > -1 && r + i < ROWS) && !tiles[r + i][c].visited &&
+        tiles[r + i][c].neighbors == 0) {
+        toQueue.push(tiles[r + i][c]);
+      }
+      if ((c + i > -1 && c + i < COLS) && !tiles[r][c + i].visited &&
+        tiles[r][c + i].neighbors == 0) {
+        toQueue.push(tiles[r][c + i]);
+      }
+    }
   }
   return toQueue;
 }
@@ -271,7 +274,7 @@ function assignColor(tile) {
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBoard();
-  drawPlayer();
+  //drawPlayer();
 }
 move();
 draw();
