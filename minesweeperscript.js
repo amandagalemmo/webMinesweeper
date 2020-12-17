@@ -23,7 +23,7 @@ sprite.src = 'guy.png';
 // const COLS = 9;
 
 const numTiles = ROWS * COLS;
-const numMines = Math.ceil(numTiles * .125);
+const numMines = Math.ceil(numTiles * .2);
 
 var leftPadding = Math.ceil((ctx.canvas.width - (COLS * TILEDIM)) / 2);
 var topPadding = Math.ceil((ctx.canvas.height - (ROWS * TILEDIM)) / 2);
@@ -146,8 +146,6 @@ function drawBoard() {
   for (var r = 0; r < ROWS; r++) {
     for (var c = 0; c < COLS; c++) {
       drawTile(r,c);
-      //drawHint(r,c);
-      drawPlayer();
       if (tiles[r][c].visited) {drawHint(r,c)};
     }
   }
@@ -239,6 +237,18 @@ function handleTile(r, c) {
            !tiles[r + i][c + i].visited) {
         toQueue.push(tiles[r + i][c + i]);
       }
+      if ((r - i > -1 && r - i < ROWS) && (c - i > -1 && c - i < COLS) &&
+           !tiles[r - i][c - i].visited) {
+        toQueue.push(tiles[r - i][c - i]);
+      }
+      if ((r - i > -1 && r - i < ROWS) && (c + i > -1 && c + i < COLS) &&
+           !tiles[r - i][c + i].visited) {
+        toQueue.push(tiles[r - i][c + i]);
+      }
+      if ((r + i > -1 && r + i < ROWS) && (c - i > -1 && c - i < COLS) &&
+           !tiles[r + i][c - i].visited) {
+        toQueue.push(tiles[r + i][c - i]);
+      }
     }
   } else {
     toQueue = new Array();
@@ -274,7 +284,7 @@ function assignColor(tile) {
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBoard();
-  //drawPlayer();
+  drawPlayer();
 }
 move();
 draw();
